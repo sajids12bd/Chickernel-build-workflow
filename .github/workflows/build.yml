@@ -1,4 +1,4 @@
-name: Build ChicKernel
+name: Build GKI
 
 on:
   workflow_dispatch:
