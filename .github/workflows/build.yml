@@ -17,17 +17,17 @@ on:
           - 0
           - 1
       build_config_1:
-        description: 'First kernel config'
+        description: 'First build configuration'
         required: true
         default: 'build.config.gki.aarch64.chickernel'
         type: string
       build_config_2:
-        description: 'Second kernel config (can be empty)'
+        description: 'Second build configuration (can be empty)'
         required: false
         default: 'build.config.gki.aarch64.chickernel.ksun'
         type: string
       build_config_3:
-        description: 'Third kernel config (can be empty)'
+        description: 'Third build configuration (can be empty)'
         required: false
         default: 'build.config.gki.aarch64.chickernel.ksun.susfs'
         type: string
