@@ -11,11 +11,8 @@ on:
       fast_build:
         description: 'Instruct tools to perform a fast Build'
         required: true
-        default: 1
-        type: choice
-        options:
-          - 0
-          - 1
+        default: true
+        type: boolean
       use_bazel:
         description: 'Use Bazel build system instead of build script'
         required: true
@@ -95,7 +92,7 @@ jobs:
             
             if [ "${{ github.event.inputs.use_bazel }}" = true ]; 
               then
-                if [ "${FAST_BUILD}" = 1 ]; 
+                if [ "${FAST_BUILD}" = true ]; 
                   then tools/bazel build --config=fast //common:${CONFIGS[$i]}
                   else tools/bazel build //common:${CONFIGS[$i]}
                 fi
