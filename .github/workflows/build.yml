@@ -9,13 +9,18 @@ on:
         default: 'https://raw.githubusercontent.com/chickendrop89/device_xiaomi_unified-kernel/readme/chickernel.xml'
         type: string
       fast_build:
-        description: 'Fast Build (1 for enabled, 0 for disabled)'
+        description: 'Instruct tools to perform a fast Build'
         required: true
         default: 1
         type: choice
         options:
           - 0
           - 1
+      use_bazel:
+        description: 'Use Bazel build system instead of build script'
+        required: true
+        default: false
+        type: boolean
       build_config_1:
         description: 'First build configuration'
         required: true
@@ -98,10 +103,30 @@ jobs:
 
           for i in "${!CONFIGS[@]}"; do
             echo "Building kernel config ${i+1}: ${CONFIGS[$i]}"
-            BUILD_CONFIG=common/${CONFIGS[$i]} build/build.sh
             
-            if [ -f "${OUT_DIR}/dist/Image" ]; then
-              mv "${OUT_DIR}/dist/Image" "${FINAL_DIR}/Image-${CONFIGS[$i]}"
+            if [ "${{ github.event.inputs.use_bazel }}" = true ]; 
+              then
+                if [ "${FAST_BUILD}" = 1 ]; 
+                  then tools/bazel build --config=fast //common:${CONFIGS[$i]}
+                  else tools/bazel build //common:${CONFIGS[$i]}
+                fi
+
+                if [ -f "bazel-bin/common/${CONFIGS[$i]}/Image" ]; 
+                  then
+                    cp "bazel-bin/common/${CONFIGS[$i]}/Image" "${FINAL_DIR}/Image-${CONFIGS[$i]}"
+                  else
+                    echo "Error: Output image not found for ${CONFIGS[$i]}"
+                    exit 1
+                fi
+              else
+                BUILD_CONFIG=common/${CONFIGS[$i]} build/build.sh
+
+                if [ -f "${OUT_DIR}/dist/Image" ]; 
+                  then mv "${OUT_DIR}/dist/Image" "${FINAL_DIR}/Image-${CONFIGS[$i]}"
+                  else
+                    echo "Error: Output image not found for ${CONFIGS[$i]}"
+                    exit 1
+                fi
             fi
           done
 
