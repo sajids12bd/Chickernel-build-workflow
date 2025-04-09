@@ -11,6 +11,10 @@ Parameters:
 - Fast Build: 
     - If enabled, will force ThinLTO which will reduce the total build time
     - default: 1
+- Use `bazel` build system instead of build script (not recommended)
+    - Whenever to build using `bazel` instead of `build.sh`
+    - This will take significantly more time due to `bazel`'s nature
+    - Requires a different build configuration type (not starting with `build.config...`)
 - Build configurations:
     - At least the first one is required to build!
     - default: chickernel build configurations
