@@ -45,15 +45,6 @@ jobs:
       - name: Clean up container
         uses: rokibhasansagar/slimhub_actions@main
 
-      - name: Setup build cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.ccache
-          key: ${{ runner.os }}-kernel-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-kernel-
-
       - name: Download latest 'repo' tool
         run: |
           mkdir -p ~/.bin
@@ -91,8 +82,6 @@ jobs:
           FAST_BUILD: ${{ github.event.inputs.fast_build }}
           OUT_DIR: ${{ github.workspace }}/kernel-build/out
           FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
-          CCACHE_DIR: ~/.ccache
-          CCACHE_MAXSIZE: 10G
         run: |
           declare -a CONFIGS=("${{ github.event.inputs.build_config_1 }}")
           [[ -n "${{ github.event.inputs.build_config_2 }}" ]] && CONFIGS+=("${{ github.event.inputs.build_config_2 }}")
