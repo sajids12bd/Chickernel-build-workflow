@@ -8,6 +8,11 @@ on:
         required: true
         default: 'https://raw.githubusercontent.com/chickendrop89/device_xiaomi_unified-kernel/readme/chickernel.xml'
         type: string
+      anykernel_url:
+        description: 'AnyKernel3 fork URL'
+        required: true
+        default: 'https://github.com/osm0sis/AnyKernel3'
+        type: string
       fast_build:
         description: 'Instruct tools to perform a fast Build'
         required: true
@@ -103,10 +108,31 @@ jobs:
             fi
           done
 
+      - name: Package Kernels with AnyKernel3
+        working-directory: kernel-build
+        env:
+          BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
+          FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
+          AK3_DIR: ${{ github.workspace }}/kernel-build/anykernel3
+        run: |
+          git clone --depth=1 ${{ github.event.inputs.anykernel_url }} "${AK3_DIR}"
+
+          for config in ${BUILD_CONFIGS}; do
+            if [ -f "${FINAL_DIR}/Image-${config}" ]; then
+              cp -r "${AK3_DIR}" "${AK3_DIR}-${config}"
+              cd "${AK3_DIR}-${config}"
+              
+              cp "${FINAL_DIR}/Image-${config}" "${AK3_DIR}-${config}/Image"
+              zip -r9 "${FINAL_DIR}/${config}.zip" * -x .git README.md *placeholder
+              
+              cd ..
+            fi
+          done
+
       - name: Upload Kernel Packages
         uses: actions/upload-artifact@v4
         with:
           name: kernel-packages
           path: |
-            kernel-build/final_images/Image-*
+            kernel-build/final_images/*.zip
           if-no-files-found: error
