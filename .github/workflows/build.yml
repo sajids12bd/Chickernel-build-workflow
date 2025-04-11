@@ -18,18 +18,10 @@ on:
         required: true
         default: false
         type: boolean
-      build_config_1:
-        description: 'First build configuration'
+      build_configs:
+        description: 'Space-separated list of build configurations'
         required: true
-        default: 'build.config.gki.aarch64.chickernel'
-        type: string
-      build_config_2:
-        description: 'Second build configuration (can be empty)'
-        required: false
-        type: string
-      build_config_3:
-        description: 'Third build configuration (can be empty)'
-        required: false
+        default: 'build.config.gki.aarch64.chickernel build.config.gki.aarch64.chickernel.ksu build.config.gki.aarch64.chickernel.ksu.susfs'
         type: string
 
 jobs:
@@ -74,49 +66,47 @@ jobs:
       - name: Build and Process Kernels
         working-directory: kernel-build
         env:
+          BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
           FAST_BUILD: ${{ github.event.inputs.fast_build }}
           OUT_DIR: ${{ github.workspace }}/kernel-build/out
           FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
         run: |
-          declare -a CONFIGS=("${{ github.event.inputs.build_config_1 }}")
-          [[ -n "${{ github.event.inputs.build_config_2 }}" ]] && CONFIGS+=("${{ github.event.inputs.build_config_2 }}")
-          [[ -n "${{ github.event.inputs.build_config_3 }}" ]] && CONFIGS+=("${{ github.event.inputs.build_config_3 }}")
-
           mkdir -p "${FINAL_DIR}"
           mkdir -p "${OUT_DIR}/dist"
 
-          for i in "${!CONFIGS[@]}"; do
-            echo "Building kernel config ${i+1}: ${CONFIGS[$i]}"
+          for config in ${BUILD_CONFIGS}; do
+            echo "Building kernel config ${config+1}: $config"
             
             if [ "${{ github.event.inputs.use_bazel }}" = true ]; 
               then
                 if [ "${FAST_BUILD}" = true ]; 
-                  then tools/bazel build --config=fast //common:${CONFIGS[$i]}
-                  else tools/bazel build //common:${CONFIGS[$i]}
+                  then tools/bazel build --config=fast //common:$config
+                  else tools/bazel build //common:$config
                 fi
 
-                if [ -f "bazel-bin/common/${CONFIGS[$i]}/Image" ]; 
+                if [ -f "bazel-bin/common/$config/Image" ]; 
                   then
-                    cp "bazel-bin/common/${CONFIGS[$i]}/Image" "${FINAL_DIR}/Image-${CONFIGS[$i]}"
+                    cp "bazel-bin/common/$config/Image" "${FINAL_DIR}/Image-$config"
                   else
-                    echo "Error: Output image not found for ${CONFIGS[$i]}"
+                    echo "Error: Output image not found for $config"
                     exit 1
                 fi
               else
-                BUILD_CONFIG=common/${CONFIGS[$i]} build/build.sh
+                BUILD_CONFIG=common/$config build/build.sh
 
                 if [ -f "${OUT_DIR}/dist/Image" ]; 
-                  then mv "${OUT_DIR}/dist/Image" "${FINAL_DIR}/Image-${CONFIGS[$i]}"
+                  then mv "${OUT_DIR}/dist/Image" "${FINAL_DIR}/Image-$config"
                   else
-                    echo "Error: Output image not found for ${CONFIGS[$i]}"
+                    echo "Error: Output image not found for $config"
                     exit 1
                 fi
             fi
           done
 
-      - name: Upload Kernel Images
+      - name: Upload Kernel Packages
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-images
-          path: kernel-build/final_images/Image-*
+          name: kernel-packages
+          path: |
+            kernel-build/final_images/Image-*
           if-no-files-found: error
