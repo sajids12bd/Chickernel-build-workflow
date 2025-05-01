@@ -2,7 +2,7 @@
 A custom github workflow to build kernel images with specified parameters and manifest 
 
 # How to use this?
-Either click "[Use this template](https://github.com/new?template_name=gki-build-workflow&template_owner=chickendrop89)" or [fork this](https://github.com/chickendrop89/gki-build-workflow/fork), open the 'Actions' tab in your repo and run the only workflow there
+[Fork this repo](https://github.com/chickendrop89/gki-build-workflow/fork), open the 'Actions' tab in your fork and run the only workflow there
 
 Parameters:
 - A manifest URL: 
