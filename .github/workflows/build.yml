@@ -42,7 +42,7 @@ on:
       anykernel_url:
         description: 'AnyKernel3 fork URL'
         required: true
-        default: 'https://github.com/osm0sis/AnyKernel3'
+        default: 'https://github.com/chickendrop89/AnyKernel3'
         type: string
       anykernel_branch:
         description: 'AnyKernel3 fork branch, empty for default branch'
