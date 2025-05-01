@@ -22,6 +22,7 @@ Parameters:
 - 🔴 Use the latest clang prebuilts
     - If enabled, will override the ACK manifest to use `main` branch of `clang` prebuilts
     - Select this strictly only if your custom kernel uses them, or if you get the `clang: not found` error.
+    - `default:` yes
 - 🟡 Space-separated AnyKernel3 fork URL + (Optional) branch:
     - Custom URL leading to your AK3 fork, and optionally branch
     - Used in post-build to package the kernel image(s)
