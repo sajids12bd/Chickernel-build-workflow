@@ -22,13 +22,10 @@ Parameters:
 - 🔴 Use the latest clang prebuilts
     - If enabled, will override the ACK manifest to use `main` branch of `clang` prebuilts
     - Select this strictly only if your custom kernel uses them, or if you get the `clang: not found` error.
-- 🟡 AnyKernel3 fork URL:
-    - Custom URL leading to your AK3 fork
+- 🟡 Space-separated AnyKernel3 fork URL + (Optional) branch:
+    - Custom URL leading to your AK3 fork, and optionally branch
     - Used in post-build to package the kernel image(s)
     - `default:` **[chickernel AK3 fork](https://github.com/chickendrop89/AnyKernel3)**
-- 🟡 AnyKernel3 fork branch:
-    - Branch to use from your AK3 fork
-    - If not set, will use the repo's default branch
 - 🟡 Kernel image to package:
     - Decides what image type is packaged with AK3
     - This allows for using compressed `Image.<xxx>` or `Image.<xxx>-dtb`
@@ -50,5 +47,8 @@ Parameters:
 **A**ndroid **c**ommon **k**ernels above `common-android13-5.15` don't have `build.sh` support, 
 and building without `kleaf` may not be possible. Make sure to select building with `kleaf` if that's the case.
 
-By default, this GitHub workflow will retain artifacts for 30 days. You can increase or remove this timeout 
+By default, this GitHub workflow will retain artifacts for 30 days. You can increase or remove this expiration period 
 if you need to by modifying the `retention-days` value in `build.yml`.
+
+Also, this github workflow has reached the input limitation (10) and adding more 
+is not possible traditionally (that's why AK3 has merged branch).
