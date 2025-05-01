@@ -54,12 +54,12 @@ on:
         required: true
         default: 'Image'
       fast_build:
-        description: 'Instruct tools to perform a fast Build'
+        description: 'Instruct tools to perform a Fast Build'
         required: true
         default: true
         type: boolean
       use_kleaf:
-        description: 'Use kleaf/bazel build system instead of build script'
+        description: 'Use the kleaf build system instead of build script'
         required: true
         default: false
         type: boolean
@@ -98,8 +98,7 @@ jobs:
           REPO_OWNER=$(echo $COMMON_REPO | cut -d'/' -f4)
           REPO_NAME=$(echo $COMMON_REPO | cut -d'/' -f5)
 
-          mkdir kernel-build 
-          cd kernel-build
+          mkdir kernel-build && cd $_
           mkdir -p .repo/local_manifests
 
           mecho() {
@@ -114,13 +113,15 @@ jobs:
           mecho "  <project path=\"common\" name=\"$REPO_NAME\" remote=\"common-repo\" revision=\"$COMMON_REPO_BRANCH\" >"
           mecho '    <linkfile src="." dest=".source_date_epoch_dir" />'
           mecho '  </project>'
+
           if [ "$USE_LATEST_CLANG" = true ]; then
             mecho '  <remove-project name="platform/prebuilts/clang/host/linux-x86" />'
             mecho '  <project path="prebuilts/clang/host/linux-x86" name="platform/prebuilts/clang/host/linux-x86" revision="main" clone-depth="1" />'
           fi
+
           mecho '</manifest>'
 
-      - name: Download the custom manifest
+      - name: Initialize the manifest, and sync
         working-directory: kernel-build
         env: 
           ACK_BRANCH: ${{ github.event.inputs.ack_branch }}
@@ -141,7 +142,7 @@ jobs:
             --fetch-submodules \
             -j$(nproc --all)
 
-      - name: Build and Process Kernels
+      - name: Build, and process the kernel(s)
         working-directory: kernel-build
         env:
           FAST_BUILD: ${{ github.event.inputs.fast_build }}
@@ -149,7 +150,6 @@ jobs:
           OUT_DIR: ${{ github.workspace }}/kernel-build/out
         run: |
           mkdir -p "${FINAL_DIR}"
-          mkdir -p "${OUT_DIR}/dist"
 
           for config in ${BUILD_CONFIGS}; do
             echo "Building kernel config ${config+1}: $config"
@@ -163,7 +163,7 @@ jobs:
 
                 if [ -f "bazel-bin/common/$config/${IMAGE_TYPE}" ]; 
                   then
-                    cp "bazel-bin/common/$config/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-$config"
+                    mv "bazel-bin/common/$config/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-$config"
                   else
                     echo "Error: Output image not found for $config"
                     exit 1
@@ -172,7 +172,8 @@ jobs:
                 BUILD_CONFIG=common/$config build/build.sh
 
                 if [ -f "${OUT_DIR}/dist/${IMAGE_TYPE}" ]; 
-                  then mv "${OUT_DIR}/dist/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-$config"
+                  then 
+                    mv "${OUT_DIR}/dist/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-$config"
                   else
                     echo "Error: Output image not found for $config"
                     exit 1
