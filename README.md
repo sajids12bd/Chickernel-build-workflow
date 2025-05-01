@@ -21,7 +21,8 @@ Parameters:
     - `default:` **[android13-5.15-lts](https://github.com/chickendrop89/device_xiaomi_unified-kernel/tree/android13-5.15-lts)**
 - 🔴 Use the latest clang prebuilts
     - If enabled, will override the ACK manifest to use `main` branch of `clang` prebuilts
-    - Select this strictly only if your custom kernel uses them, or if you get the `clang: not found` error.
+    - Select this strictly only if your custom kernel uses them
+    - If you get the `clang: not found` error, try toggling this on/off
     - `default:` yes
 - 🟡 Space-separated AnyKernel3 fork URL + (Optional) branch:
     - Custom URL leading to your AK3 fork, and optionally branch
