@@ -12,6 +12,10 @@ Parameters:
     - Custom URL leading to your AK3 fork
     - Used in post-build to package the kernel image(s)
     - `default:` **[chickernel branch of my AK3 fork](https://github.com/chickendrop89/AnyKernel3)**
+- Kernel image to package:
+    - Decides what image type is packaged with AK3
+    - This allows for using compressed `Image.<xxx>` or `Image.<xxx>-dtb`
+    - `default`: `Image`
 - Instruct tools to perform a fast Build: 
     - If enabled, will force ThinLTO which will reduce the total build time
     - `default:` yes
