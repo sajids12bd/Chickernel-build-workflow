@@ -213,3 +213,4 @@ jobs:
           path: |
             kernel-build/final_images/*.zip
           if-no-files-found: error
+          retention-days: 30
