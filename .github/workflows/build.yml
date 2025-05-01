@@ -1,4 +1,3 @@
-
 #  A custom github workflow to build kernel images with specified parameters and manifest 
 #  Copyright (C) 2025 chickendrop89
 #
@@ -20,10 +19,20 @@ name: Build GKI
 on:
   workflow_dispatch:
     inputs:
-      manifest_url:
-        description: 'A manifest URL'
+      branch_name:
+        description: 'Android-common-kernel branch (e.g. common-android13-5.15)'
         required: true
-        default: 'https://raw.githubusercontent.com/chickendrop89/device_xiaomi_unified-kernel/readme/chickernel.xml'
+        default: 'common-android13-5.15'
+        type: string
+      common_repository:
+        description: 'Custom kernel repository'
+        required: true
+        default: 'https://github.com/chickendrop89/device_xiaomi_unified-kernel'
+        type: string
+      common_branch:
+        description: 'Custom kernel repository branch'
+        required: true
+        default: 'android13-5.15-lts'
         type: string
       anykernel_url:
         description: 'AnyKernel3 fork URL'
@@ -55,8 +64,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clean up container
-        uses: rokibhasansagar/slimhub_actions@main
+      #- name: Clean up container
+      #  uses: rokibhasansagar/slimhub_actions@main
 
       - name: Download latest 'repo' tool
         run: |
@@ -65,20 +74,43 @@ jobs:
           chmod a+rx ~/.bin/repo
           echo "${HOME}/.bin" >> $GITHUB_PATH
 
-      - name: Download the custom manifest
+      - name: Setup build workspace and a local manifest
+        env:
+          COMMON_REPO: ${{ github.event.inputs.common_repository }}
+          COMMON_REPO_BRANCH: ${{ github.event.inputs.common_branch }}
+          CUSTOM_MANIFEST: .repo/local_manifests/custom.xml
         run: |
-          mkdir kernel-build && cd kernel-build
-          wget -O custom-manifest.xml ${{ github.event.inputs.manifest_url }}
+          REPO_SOURCE=$(echo $COMMON_REPO | cut -d'/' -f3)
+          REPO_OWNER=$(echo $COMMON_REPO | cut -d'/' -f4)
+          REPO_NAME=$(echo $COMMON_REPO | cut -d'/' -f5)
 
-      - name: Download the build environment
+          mkdir kernel-build 
+          cd kernel-build
+          mkdir -p .repo/local_manifests
+
+          mecho() {
+            echo "$1" >> "$CUSTOM_MANIFEST"
+          }
+
+          mecho '<?xml version="1.0" encoding="UTF-8"?>'
+          mecho '<manifest>'
+          mecho "  <remote name=\"common-repo\" fetch=\"https://$REPO_SOURCE/$REPO_OWNER\" />"
+          mecho ''
+          mecho '  <remove-project name="kernel/common" />'
+          mecho "  <project path=\"common\" name=\"$REPO_NAME\" remote=\"common-repo\" revision=\"$COMMON_REPO_BRANCH\" >"
+          mecho '    <linkfile src="." dest=".source_date_epoch_dir" />'
+          mecho '  </project>'
+          mecho '</manifest>'
+
+      - name: Download the custom manifest
         working-directory: kernel-build
-        run: | 
+        run: |
           repo init \
             --no-tags \
             --depth=1 \
             --dissociate \
             -u https://android.googlesource.com/kernel/manifest \
-            -m $(pwd)/custom-manifest.xml 
+            -b ${{ github.event.inputs.branch_name }}
 
           repo sync \
             --no-tags \
