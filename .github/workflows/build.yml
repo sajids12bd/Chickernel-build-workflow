@@ -79,17 +79,58 @@ jobs:
     env:
       BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
       IMAGE_TYPE: ${{ github.event.inputs.kernel_image_type }}
-      FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
+
+      ACK_BRANCH: ${{ github.event.inputs.ack_branch }}
+      COMMON_REPO: ${{ github.event.inputs.custom_kernel_repo }}
+      COMMON_REPO_BRANCH: ${{ github.event.inputs.custom_kernel_repo_branch }}
+      AK3_GIT_URL: ${{ github.event.inputs.anykernel_url }}
+      AK3_GIT_BRANCH: ${{ github.event.inputs.anykernel_branch }}
+
       AK3_DIR: ${{ github.workspace }}/kernel-build/anykernel3
+      FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
+
     steps:
+      - name: Validate inputs
+        run: |
+          validate_url() {
+            if [[ ! "$1" =~ ^https://.+/.+/.+$ ]]; 
+              then
+                echo "Invalid URL: $1"
+                echo "URL must be a valid HTTPS git repository URL"
+                exit 1
+            fi
+          }
+
+          validate_url $COMMON_REPO
+          validate_url $AK3_GIT_URL
+
+          validate_single_word() {
+            if [[ "$1" =~ [[:space:]] ]]; 
+              then
+                echo "::error::Invalid $2: $1"
+                echo "$2 must be a single word without spaces"
+                exit 1
+            fi
+          }
+
+          validate_single_word "$ACK_BRANCH" \
+          "Android-common-kernel branch"
+
+          validate_single_word "$COMMON_REPO_BRANCH" \
+          "Custom Kernel repo branch"
+
+          validate_single_word "$AK3_GIT_BRANCH" \
+          "AnyKernel fork branch"
+
+          validate_single_word "$IMAGE_TYPE" \
+          "Kernel image type"
+
       - name: Clean up container
         uses: rokibhasansagar/slimhub_actions@main
 
       - name: Setup build workspace and a local manifest
         env:
           USE_LATEST_CLANG: ${{ github.event.inputs.use_latest_clang }}
-          COMMON_REPO: ${{ github.event.inputs.custom_kernel_repo }}
-          COMMON_REPO_BRANCH: ${{ github.event.inputs.custom_kernel_repo_branch }}
           CUSTOM_MANIFEST: .repo/local_manifests/custom.xml
         run: |
           REPO_SOURCE=$(echo $COMMON_REPO | cut -d'/' -f3)
@@ -121,9 +162,6 @@ jobs:
 
       - name: Download build utilities
         working-directory: kernel-build
-        env: 
-          AK3_GIT_URL: ${{ github.event.inputs.anykernel_url }}
-          AK3_GIT_BRANCH: ${{ github.event.inputs.anykernel_branch }}
         run: |
           if [ -z "$AK3_GIT_BRANCH" ]
             then git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}"
@@ -137,8 +175,6 @@ jobs:
 
       - name: Initialize the manifest, and sync
         working-directory: kernel-build
-        env: 
-          ACK_BRANCH: ${{ github.event.inputs.ack_branch }}
         run: |
           repo init \
             --no-tags \
