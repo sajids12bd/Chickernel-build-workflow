@@ -51,7 +51,6 @@ on:
       anykernel_branch:
         description: 'AnyKernel3 fork branch, empty for default branch'
         required: false
-        default: ''
         type: string
       kernel_image_type:
         description: 'Kernel image to package (Image.gz, Image.lz4, etc)'
@@ -67,6 +66,9 @@ on:
         required: true
         default: false
         type: boolean
+      extra_args:
+        description: 'Extra arguments that will be passed to build system/script'
+        required: false
       build_configs:
         description: 'Space-separated list of build configurations'
         required: true
@@ -195,6 +197,7 @@ jobs:
       - name: Build, and process the kernel(s)
         working-directory: kernel-build
         env:
+          EXTRA_ARGS: ${{ github.event.inputs.extra_args }}
           FAST_BUILD: ${{ github.event.inputs.fast_build }}
           USE_KLEAF: ${{ github.event.inputs.use_kleaf }}
           OUT_DIR: ${{ github.workspace }}/kernel-build/out
@@ -207,8 +210,8 @@ jobs:
             if [ "$USE_KLEAF" = true ]; 
               then
                 if [ "${FAST_BUILD}" = true ]; 
-                  then tools/bazel build --config=fast //common:$config
-                  else tools/bazel build //common:$config
+                  then tools/bazel build $EXTRA_ARGS --config=fast //common:$config
+                  else tools/bazel build $EXTRA_ARGS //common:$config
                 fi
 
                 if [ -f "bazel-bin/common/$config/${IMAGE_TYPE}" ]; 
@@ -219,7 +222,7 @@ jobs:
                     exit 1
                 fi
               else
-                BUILD_CONFIG=common/$config build/build.sh
+                BUILD_CONFIG=common/$config $EXTRA_ARGS build/build.sh
 
                 if [ -f "${OUT_DIR}/dist/${IMAGE_TYPE}" ]; 
                   then 
