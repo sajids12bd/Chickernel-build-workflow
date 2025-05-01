@@ -30,6 +30,10 @@ on:
         required: true
         default: 'https://github.com/osm0sis/AnyKernel3'
         type: string
+      kernel_image_type:
+        description: 'Kernel image to package (Image.gz, Image.lz4, etc)'
+        required: true
+        default: 'Image'
       fast_build:
         description: 'Instruct tools to perform a fast Build'
         required: true
@@ -88,6 +92,7 @@ jobs:
       - name: Build and Process Kernels
         working-directory: kernel-build
         env:
+          IMAGE_TYPE: ${{ github.event.inputs.kernel_image_type }}
           BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
           FAST_BUILD: ${{ github.event.inputs.fast_build }}
           OUT_DIR: ${{ github.workspace }}/kernel-build/out
@@ -106,9 +111,9 @@ jobs:
                   else tools/bazel build //common:$config
                 fi
 
-                if [ -f "bazel-bin/common/$config/Image" ]; 
+                if [ -f "bazel-bin/common/$config/${IMAGE_TYPE}" ]; 
                   then
-                    cp "bazel-bin/common/$config/Image" "${FINAL_DIR}/Image-$config"
+                    cp "bazel-bin/common/$config/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-$config"
                   else
                     echo "Error: Output image not found for $config"
                     exit 1
@@ -116,8 +121,8 @@ jobs:
               else
                 BUILD_CONFIG=common/$config build/build.sh
 
-                if [ -f "${OUT_DIR}/dist/Image" ]; 
-                  then mv "${OUT_DIR}/dist/Image" "${FINAL_DIR}/Image-$config"
+                if [ -f "${OUT_DIR}/dist/${IMAGE_TYPE}" ]; 
+                  then mv "${OUT_DIR}/dist/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-$config"
                   else
                     echo "Error: Output image not found for $config"
                     exit 1
@@ -128,6 +133,7 @@ jobs:
       - name: Package Kernels with AnyKernel3
         working-directory: kernel-build
         env:
+          IMAGE_TYPE: ${{ github.event.inputs.kernel_image_type }}
           BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
           FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
           AK3_DIR: ${{ github.workspace }}/kernel-build/anykernel3
@@ -135,11 +141,11 @@ jobs:
           git clone --depth=1 ${{ github.event.inputs.anykernel_url }} "${AK3_DIR}"
 
           for config in ${BUILD_CONFIGS}; do
-            if [ -f "${FINAL_DIR}/Image-${config}" ]; then
+            if [ -f "${FINAL_DIR}/${IMAGE_TYPE}-${config}" ]; then
               cp -r "${AK3_DIR}" "${AK3_DIR}-${config}"
               cd "${AK3_DIR}-${config}"
               
-              cp "${FINAL_DIR}/Image-${config}" "${AK3_DIR}-${config}/Image"
+              cp "${FINAL_DIR}/${IMAGE_TYPE}-${config}" "${AK3_DIR}-${config}/${IMAGE_TYPE}"
               zip -r9 "${FINAL_DIR}/${config}.zip" * -x .git README.md *placeholder
               
               cd ..
