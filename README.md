@@ -16,6 +16,9 @@ Parameters:
 - Custom kernel repository branch:
     - Branch to use from your custom kernel repository
     - `default:` **android13-5.15-lts**
+- Use the latest clang prebuilts
+    - If enabled, will override the ACK manifest to use `main` branch of `clang` prebuilts
+    - Use this strictly only if your custom kernel uses them.
 - AnyKernel3 fork URL:
     - Custom URL leading to your AK3 fork
     - Used in post-build to package the kernel image(s)
