@@ -131,9 +131,6 @@ jobs:
           validate_single_word "$IMAGE_TYPE" \
           "Kernel image type"
 
-      - name: Clean up container
-        uses: rokibhasansagar/slimhub_actions@main
-
       - name: Setup build workspace and a local manifest
         env:
           USE_LATEST_CLANG: ${{ github.event.inputs.use_latest_clang }}
@@ -178,6 +175,9 @@ jobs:
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
           chmod a+rx ~/.bin/repo
           echo "${HOME}/.bin" >> $GITHUB_PATH
+
+      - name: Clean up container
+        uses: rokibhasansagar/slimhub_actions@main
 
       - name: Initialize the manifest, and sync
         working-directory: kernel-build
