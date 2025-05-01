@@ -23,6 +23,9 @@ Parameters:
     - Custom URL leading to your AK3 fork
     - Used in post-build to package the kernel image(s)
     - `default:` **[My AK3 fork](https://github.com/chickendrop89/AnyKernel3)**
+- AnyKernel3 fork branch:
+    - Branch to use from your AK3 fork
+    - If not set, will use the repo's default branch
 - Kernel image to package:
     - Decides what image type is packaged with AK3
     - This allows for using compressed `Image.<xxx>` or `Image.<xxx>-dtb`
