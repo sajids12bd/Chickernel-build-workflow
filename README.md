@@ -46,3 +46,6 @@ Parameters:
 # Notes
 **A**ndroid **c**ommon **k**ernels above `common-android13-5.15` don't have `build.sh` support, 
 and building without `kleaf` may not be possible. Make sure to select building with `kleaf` if that's the case.
+
+By default, this GitHub workflow will retain artifacts for 30 days. You can increase or remove this timeout 
+if you need to by modifying the `retention-days` value in `build.yml`.
