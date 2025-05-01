@@ -44,6 +44,11 @@ on:
         required: true
         default: 'https://github.com/osm0sis/AnyKernel3'
         type: string
+      anykernel_branch:
+        description: 'AnyKernel3 fork branch, empty for default branch'
+        required: false
+        default: ''
+        type: string
       kernel_image_type:
         description: 'Kernel image to package (Image.gz, Image.lz4, etc)'
         required: true
@@ -179,9 +184,13 @@ jobs:
         working-directory: kernel-build
         env:
           AK3_GIT_URL: ${{ github.event.inputs.anykernel_url }}
+          AK3_GIT_BRANCH: ${{ github.event.inputs.anykernel_branch }}
           AK3_DIR: ${{ github.workspace }}/kernel-build/anykernel3
         run: |
-          git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}"
+          if [ -z "$AK3_GIT_BRANCH" ]
+            then git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}"
+            else git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}" -b $AK3_GIT_BRANCH
+          fi
 
           for config in ${BUILD_CONFIGS}; do
             if [ -f "${FINAL_DIR}/${IMAGE_TYPE}-${config}" ]; then
