@@ -48,8 +48,8 @@ on:
         required: true
         default: true
         type: boolean
-      use_bazel:
-        description: 'Use Bazel build system instead of build script'
+      use_kleaf:
+        description: 'Use kleaf/bazel build system instead of build script'
         required: true
         default: false
         type: boolean
@@ -130,7 +130,7 @@ jobs:
         working-directory: kernel-build
         env:
           FAST_BUILD: ${{ github.event.inputs.fast_build }}
-          USE_BAZEL: ${{ github.event.inputs.use_bazel }}
+          USE_KLEAF: ${{ github.event.inputs.use_kleaf }}
           OUT_DIR: ${{ github.workspace }}/kernel-build/out
         run: |
           mkdir -p "${FINAL_DIR}"
@@ -139,7 +139,7 @@ jobs:
           for config in ${BUILD_CONFIGS}; do
             echo "Building kernel config ${config+1}: $config"
             
-            if [ "$USE_BAZEL" = true ]; 
+            if [ "$USE_KLEAF" = true ]; 
               then
                 if [ "${FAST_BUILD}" = true ]; 
                   then tools/bazel build --config=fast //common:$config
