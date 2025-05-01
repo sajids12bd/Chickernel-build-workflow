@@ -37,9 +37,12 @@ Parameters:
     - If enabled, will force ThinLTO which will reduce the total build time
     - `default:` yes
 - 🟢 Use kleaf build system instead of build script:
-    - Whether to build using `kleaf (bazel)` instead of `build.sh`
+    - Whenever to build using `kleaf (bazel)` instead of `build.sh`
     - Requires a different build configuration type (not starting with `build.config...`)
     - `default:` no
+- 🟢 Extra arguments that will be passed to build system/script
+    - Input your extra arguments to pass to the build, if any
+    - Examples: `BUILD_CONFIG_FRAGMENTS=` (`build.sh`), `--verbose_failures` (`kleaf`)
 - 🟢 Space-separated list of build configurations:
     - `default:` chickernel vanilla, ksu, ksu + susfs
 
