@@ -72,8 +72,8 @@ jobs:
       IMAGE_TYPE: ${{ github.event.inputs.kernel_image_type }}
       FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
     steps:
-      #- name: Clean up container
-      #  uses: rokibhasansagar/slimhub_actions@main
+      - name: Clean up container
+        uses: rokibhasansagar/slimhub_actions@main
 
       - name: Download latest 'repo' tool
         run: |
