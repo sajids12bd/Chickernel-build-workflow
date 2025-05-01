@@ -2,16 +2,24 @@
 A custom github workflow to build kernel images with specified parameters and manifest 
 
 # How to use this?
-[Fork this repo](https://github.com/chickendrop89/gki-build-workflow/fork), open the 'Actions' tab in your fork and run the only workflow there
+[Fork this repo](https://github.com/chickendrop89/gki-build-workflow/fork), 
+open the 'Actions' tab in your fork and run the only workflow there
 
 Parameters:
-- A manifest URL: 
-    - Custom ACK manifest URL (**[example manifests](https://android.googlesource.com/kernel/manifest/+refs)**)
-    - `default:` **[chickernel manifest](https://raw.githubusercontent.com/chickendrop89/device_xiaomi_unified-kernel/refs/heads/readme/chickernel.xml)**
+- Android-common-kernel branch:
+    - ACK branch to use (e.g. `common-android13-5.15`)
+    - Google provides a list of [possible ACK branches here](https://source.android.com/docs/setup/reference/bazel-support)
+    - `default:` **common-android13-5.15**
+- Custom kernel repository:
+    - Git URL to your custom kernel repository
+    - `default:` **[chickernel](https://github.com/chickendrop89/device_xiaomi_unified-kernel)**
+- Custom kernel repository branch:
+    - Branch to use from your custom kernel repository
+    - `default:` **android13-5.15-lts**
 - AnyKernel3 fork URL:
     - Custom URL leading to your AK3 fork
     - Used in post-build to package the kernel image(s)
-    - `default:` **[chickernel branch of my AK3 fork](https://github.com/chickendrop89/AnyKernel3)**
+    - `default:` **[My AK3 fork](https://github.com/chickendrop89/AnyKernel3)**
 - Kernel image to package:
     - Decides what image type is packaged with AK3
     - This allows for using compressed `Image.<xxx>` or `Image.<xxx>-dtb`
@@ -19,9 +27,13 @@ Parameters:
 - Instruct tools to perform a fast Build: 
     - If enabled, will force ThinLTO which will reduce the total build time
     - `default:` yes
-- Use `bazel` build system instead of build script (not recommended)
-    - Whenever to build using `bazel` instead of `build.sh`
+- Use kleaf/bazel build system instead of build script:
+    - Whether to build using `kleaf/bazel` instead of `build.sh`
     - Requires a different build configuration type (not starting with `build.config...`)
     - `default:` no
 - Space-separated list of build configurations:
     - `default:` chickernel vanilla, ksu, ksu + susfs
+
+# Notes
+**A**ndroid **c**ommon **k**ernels above `common-android13-5.15` don't have `build.sh` support, 
+and building without `kleaf` may not be possible. Make sure to select building with `kleaf` if that's the case.
