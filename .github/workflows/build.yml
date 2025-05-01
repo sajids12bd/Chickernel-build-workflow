@@ -62,7 +62,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
+      IMAGE_TYPE: ${{ github.event.inputs.kernel_image_type }}
+      FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
     steps:
       #- name: Clean up container
       #  uses: rokibhasansagar/slimhub_actions@main
@@ -104,13 +107,15 @@ jobs:
 
       - name: Download the custom manifest
         working-directory: kernel-build
+        env: 
+          ACK_BRANCH: ${{ github.event.inputs.branch_name }}
         run: |
           repo init \
             --no-tags \
             --depth=1 \
             --dissociate \
             -u https://android.googlesource.com/kernel/manifest \
-            -b ${{ github.event.inputs.branch_name }}
+            -b $ACK_BRANCH
 
           repo sync \
             --no-tags \
@@ -124,11 +129,9 @@ jobs:
       - name: Build and Process Kernels
         working-directory: kernel-build
         env:
-          IMAGE_TYPE: ${{ github.event.inputs.kernel_image_type }}
-          BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
           FAST_BUILD: ${{ github.event.inputs.fast_build }}
+          USE_BAZEL: ${{ github.event.inputs.use_bazel }}
           OUT_DIR: ${{ github.workspace }}/kernel-build/out
-          FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
         run: |
           mkdir -p "${FINAL_DIR}"
           mkdir -p "${OUT_DIR}/dist"
@@ -136,7 +139,7 @@ jobs:
           for config in ${BUILD_CONFIGS}; do
             echo "Building kernel config ${config+1}: $config"
             
-            if [ "${{ github.event.inputs.use_bazel }}" = true ]; 
+            if [ "$USE_BAZEL" = true ]; 
               then
                 if [ "${FAST_BUILD}" = true ]; 
                   then tools/bazel build --config=fast //common:$config
@@ -165,12 +168,10 @@ jobs:
       - name: Package Kernels with AnyKernel3
         working-directory: kernel-build
         env:
-          IMAGE_TYPE: ${{ github.event.inputs.kernel_image_type }}
-          BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
-          FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
+          AK3_GIT_URL: ${{ github.event.inputs.anykernel_url }}
           AK3_DIR: ${{ github.workspace }}/kernel-build/anykernel3
         run: |
-          git clone --depth=1 ${{ github.event.inputs.anykernel_url }} "${AK3_DIR}"
+          git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}"
 
           for config in ${BUILD_CONFIGS}; do
             if [ -f "${FINAL_DIR}/${IMAGE_TYPE}-${config}" ]; then
