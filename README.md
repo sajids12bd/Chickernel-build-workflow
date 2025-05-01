@@ -33,11 +33,11 @@ Parameters:
     - Decides what image type is packaged with AK3
     - This allows for using compressed `Image.<xxx>` or `Image.<xxx>-dtb`
     - `default`: `Image`
-- 🟢 Instruct tools to perform a fast Build: 
+- 🟢 Instruct tools to perform a Fast Build: 
     - If enabled, will force ThinLTO which will reduce the total build time
     - `default:` yes
-- 🟢 Use kleaf/bazel build system instead of build script:
-    - Whether to build using `kleaf/bazel` instead of `build.sh`
+- 🟢 Use kleaf build system instead of build script:
+    - Whether to build using `kleaf (bazel)` instead of `build.sh`
     - Requires a different build configuration type (not starting with `build.config...`)
     - `default:` no
 - 🟢 Space-separated list of build configurations:
