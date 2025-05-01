@@ -1,8 +1,8 @@
-# gki-build-workflow
-A custom github workflow to build kernel images with specified parameters and manifest 
+# ack-build-workflow
+A github workflow to build custom android common kernels with specified parameters
 
 # How to use this?
-[Fork this repo](https://github.com/chickendrop89/gki-build-workflow/fork), 
+[Fork this repo](https://github.com/chickendrop89/ack-build-workflow/fork), 
 open the 'Actions' tab in your fork and run the only workflow there
 
 Parameters:

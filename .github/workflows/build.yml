@@ -1,4 +1,4 @@
-#  A custom github workflow to build kernel images with specified parameters and manifest 
+#  A github workflow to build custom android common kernels with specified parameters
 #  Copyright (C) 2025 chickendrop89
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-name: Build GKI
+name: Build Android Common Kernel
 
 on:
   workflow_dispatch:
