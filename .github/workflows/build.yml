@@ -43,14 +43,10 @@ on:
         required: true
         default: true
         type: boolean
-      anykernel_url:
-        description: 'AnyKernel3 fork URL'
+      anykernel_url_plus_branch:
+        description: 'Space-separated AnyKernel3 fork URL + (Optional) Branch'
         required: true
         default: 'https://github.com/chickendrop89/AnyKernel3'
-        type: string
-      anykernel_branch:
-        description: 'AnyKernel3 fork branch, empty for default branch'
-        required: false
         type: string
       kernel_image_type:
         description: 'Kernel image to package (Image.gz, Image.lz4, etc)'
@@ -85,8 +81,7 @@ jobs:
       ACK_BRANCH: ${{ github.event.inputs.ack_branch }}
       COMMON_REPO: ${{ github.event.inputs.custom_kernel_repo }}
       COMMON_REPO_BRANCH: ${{ github.event.inputs.custom_kernel_repo_branch }}
-      AK3_GIT_URL: ${{ github.event.inputs.anykernel_url }}
-      AK3_GIT_BRANCH: ${{ github.event.inputs.anykernel_branch }}
+      AK3_GIT_URL_PLUS_BRANCH: ${{ github.event.inputs.anykernel_url_plus_branch }}
 
       AK3_DIR: ${{ github.workspace }}/kernel-build/anykernel3
       FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
@@ -94,6 +89,13 @@ jobs:
     steps:
       - name: Validate inputs
         run: |
+          AK3_GIT_URL=$(echo "$AK3_GIT_URL_PLUS_BRANCH" | awk '{print $1}')
+          AK3_GIT_BRANCH=$(echo "$AK3_GIT_URL_PLUS_BRANCH" | awk '{print $2}')
+          
+          # Export these variables while we're at it
+          echo "AK3_GIT_URL=$AK3_GIT_URL" >> $GITHUB_ENV
+          echo "AK3_GIT_BRANCH=$AK3_GIT_BRANCH" >> $GITHUB_ENV
+
           validate_url() {
             if [[ ! "$1" =~ ^https://.+/.+/.+$ ]]; 
               then
@@ -121,8 +123,10 @@ jobs:
           validate_single_word "$COMMON_REPO_BRANCH" \
           "Custom Kernel repo branch"
 
-          validate_single_word "$AK3_GIT_BRANCH" \
-          "AnyKernel fork branch"
+          if [ ! -z "$AK3_GIT_BRANCH" ]; 
+            then validate_single_word "$AK3_GIT_BRANCH" \
+              "AnyKernel3 fork branch"
+          fi
 
           validate_single_word "$IMAGE_TYPE" \
           "Kernel image type"
