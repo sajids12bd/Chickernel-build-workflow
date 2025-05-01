@@ -19,17 +19,17 @@ name: Build GKI
 on:
   workflow_dispatch:
     inputs:
-      branch_name:
+      ack_branch:
         description: 'Android-common-kernel branch (e.g. common-android13-5.15)'
         required: true
         default: 'common-android13-5.15'
         type: string
-      common_repository:
+      custom_kernel_repo:
         description: 'Custom kernel repository'
         required: true
         default: 'https://github.com/chickendrop89/device_xiaomi_unified-kernel'
         type: string
-      common_branch:
+      custom_kernel_repo_branch:
         description: 'Custom kernel repository branch'
         required: true
         default: 'android13-5.15-lts'
@@ -79,8 +79,8 @@ jobs:
 
       - name: Setup build workspace and a local manifest
         env:
-          COMMON_REPO: ${{ github.event.inputs.common_repository }}
-          COMMON_REPO_BRANCH: ${{ github.event.inputs.common_branch }}
+          COMMON_REPO: ${{ github.event.inputs.custom_kernel_repo }}
+          COMMON_REPO_BRANCH: ${{ github.event.inputs.custom_kernel_repo_branch }}
           CUSTOM_MANIFEST: .repo/local_manifests/custom.xml
         run: |
           REPO_SOURCE=$(echo $COMMON_REPO | cut -d'/' -f3)
@@ -108,7 +108,7 @@ jobs:
       - name: Download the custom manifest
         working-directory: kernel-build
         env: 
-          ACK_BRANCH: ${{ github.event.inputs.branch_name }}
+          ACK_BRANCH: ${{ github.event.inputs.ack_branch }}
         run: |
           repo init \
             --no-tags \
