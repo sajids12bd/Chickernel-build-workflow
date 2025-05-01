@@ -34,6 +34,11 @@ on:
         required: true
         default: 'android13-5.15-lts'
         type: string
+      use_latest_clang:
+        description: 'Use the latest clang prebuilts (Check README!)'
+        required: true
+        default: true
+        type: boolean
       anykernel_url:
         description: 'AnyKernel3 fork URL'
         required: true
@@ -79,6 +84,7 @@ jobs:
 
       - name: Setup build workspace and a local manifest
         env:
+          USE_LATEST_CLANG: ${{ github.event.inputs.use_latest_clang }}
           COMMON_REPO: ${{ github.event.inputs.custom_kernel_repo }}
           COMMON_REPO_BRANCH: ${{ github.event.inputs.custom_kernel_repo_branch }}
           CUSTOM_MANIFEST: .repo/local_manifests/custom.xml
@@ -103,6 +109,10 @@ jobs:
           mecho "  <project path=\"common\" name=\"$REPO_NAME\" remote=\"common-repo\" revision=\"$COMMON_REPO_BRANCH\" >"
           mecho '    <linkfile src="." dest=".source_date_epoch_dir" />'
           mecho '  </project>'
+          if [ "$USE_LATEST_CLANG" = true ]; then
+            mecho '  <remove-project name="platform/prebuilts/clang/host/linux-x86" />'
+            mecho '  <project path="prebuilts/clang/host/linux-x86" name="platform/prebuilts/clang/host/linux-x86" revision="main" clone-depth="1" />'
+          fi
           mecho '</manifest>'
 
       - name: Download the custom manifest
