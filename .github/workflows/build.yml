@@ -76,16 +76,10 @@ jobs:
       BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
       IMAGE_TYPE: ${{ github.event.inputs.kernel_image_type }}
       FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
+      AK3_DIR: ${{ github.workspace }}/kernel-build/anykernel3
     steps:
       - name: Clean up container
         uses: rokibhasansagar/slimhub_actions@main
-
-      - name: Download latest 'repo' tool
-        run: |
-          mkdir -p ~/.bin
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
-          chmod a+rx ~/.bin/repo
-          echo "${HOME}/.bin" >> $GITHUB_PATH
 
       - name: Setup build workspace and a local manifest
         env:
@@ -120,6 +114,22 @@ jobs:
           fi
 
           mecho '</manifest>'
+
+      - name: Download build utilities
+        working-directory: kernel-build
+        env: 
+          AK3_GIT_URL: ${{ github.event.inputs.anykernel_url }}
+          AK3_GIT_BRANCH: ${{ github.event.inputs.anykernel_branch }}
+        run: |
+          if [ -z "$AK3_GIT_BRANCH" ]
+            then git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}"
+            else git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}" -b $AK3_GIT_BRANCH
+          fi
+
+          mkdir -p ~/.bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
+          chmod a+rx ~/.bin/repo
+          echo "${HOME}/.bin" >> $GITHUB_PATH
 
       - name: Initialize the manifest, and sync
         working-directory: kernel-build
@@ -183,16 +193,7 @@ jobs:
 
       - name: Package Kernels with AnyKernel3
         working-directory: kernel-build
-        env:
-          AK3_GIT_URL: ${{ github.event.inputs.anykernel_url }}
-          AK3_GIT_BRANCH: ${{ github.event.inputs.anykernel_branch }}
-          AK3_DIR: ${{ github.workspace }}/kernel-build/anykernel3
         run: |
-          if [ -z "$AK3_GIT_BRANCH" ]
-            then git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}"
-            else git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}" -b $AK3_GIT_BRANCH
-          fi
-
           for config in ${BUILD_CONFIGS}; do
             if [ -f "${FINAL_DIR}/${IMAGE_TYPE}-${config}" ]; then
               cp -r "${AK3_DIR}" "${AK3_DIR}-${config}"
