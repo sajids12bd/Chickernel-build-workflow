@@ -12,10 +12,11 @@ Parameters:
 - 🔴 Android-common-kernel branch:
     - ACK branch to use (e.g. `common-android13-5.15`)
     - Google provides a list of [possible ACK branches here](https://source.android.com/docs/setup/reference/bazel-support)
+    - This is used for the build workspace (`prebuilts`, `external`, `build`)
   
     `default:` **common-android13-5.15**
 - 🔴 Custom kernel repository:
-    - Custom URL leading to your custom kernel repository
+    - Git URL leading to your custom kernel repository
     
     `default:` **[chickernel](https://github.com/chickendrop89/device_xiaomi_unified-kernel)**
 - 🔴 Custom kernel repository branch:
@@ -23,13 +24,12 @@ Parameters:
 
     `default:` **[android13-5.15-lts](https://github.com/chickendrop89/device_xiaomi_unified-kernel/tree/android13-5.15-lts)**
 - 🔴 Use the latest clang prebuilts
-    - If enabled, will override the ACK manifest to use `main` branch of `clang` prebuilts
-    - Select this strictly only if your custom kernel uses them
-    - If you get the `clang: not found` error, try toggling this on/off
+    - If enabled, will override the ACK manifest to use upstream branch of `clang/host/linux-x86` prebuilts
+    - On newer branches, select this strictly only if your `build.config.constants` uses the upstream clang toolchain.
 
     `default:` yes
-- 🟡 Space-separated AnyKernel3 fork URL + (Optional) branch:
-    - Custom URL leading to your AK3 fork, and optionally branch
+- 🟡 Space-separated AnyKernel3 fork URL + (optional) branch:
+    - Git URL leading to your AK3 fork, and optionally branch
     - Used in post-build to package the kernel image(s)
 
     `default:` **[chickernel AK3 fork](https://github.com/chickendrop89/AnyKernel3)**
@@ -39,7 +39,8 @@ Parameters:
   
     `default`: `Image`
 - 🟢 Instruct tools to perform a Fast Build: 
-    - If enabled, will force ThinLTO which will reduce the total build time
+    - If enabled, will perform a shorter build at the cost of skiping few optimizations.
+    - Depending on the build system used, this can affect LTO configuration or build features
 
     `default:` yes
 - 🟢 Use kleaf build system instead of build script:
