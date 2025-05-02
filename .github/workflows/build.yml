@@ -89,12 +89,12 @@ jobs:
     steps:
       - name: Validate inputs
         run: |
-          AK3_GIT_URL=$(echo "$AK3_GIT_URL_PLUS_BRANCH" | awk '{print $1}')
-          AK3_GIT_BRANCH=$(echo "$AK3_GIT_URL_PLUS_BRANCH" | awk '{print $2}')
+          AK3_GIT_URL=$(echo "${AK3_GIT_URL_PLUS_BRANCH}" | awk '{print $1}')
+          AK3_GIT_BRANCH=$(echo "${AK3_GIT_URL_PLUS_BRANCH}" | awk '{print $2}')
           
           # Export these variables while we're at it
-          echo "AK3_GIT_URL=$AK3_GIT_URL" >> $GITHUB_ENV
-          echo "AK3_GIT_BRANCH=$AK3_GIT_BRANCH" >> $GITHUB_ENV
+          echo "AK3_GIT_URL=${AK3_GIT_URL}" >> ${GITHUB_ENV}
+          echo "AK3_GIT_BRANCH=${AK3_GIT_BRANCH}" >> ${GITHUB_ENV}
 
           validate_url() {
             if [[ ! "$1" =~ ^https://.+/.+/.+$ ]]; 
@@ -105,8 +105,8 @@ jobs:
             fi
           }
 
-          validate_url $COMMON_REPO
-          validate_url $AK3_GIT_URL
+          validate_url ${COMMON_REPO}
+          validate_url ${AK3_GIT_URL}
 
           validate_single_word() {
             if [[ "$1" =~ [[:space:]] ]]; 
@@ -117,18 +117,19 @@ jobs:
             fi
           }
 
-          validate_single_word "$ACK_BRANCH" \
+          validate_single_word "${ACK_BRANCH}" \
           "Android-common-kernel branch"
 
-          validate_single_word "$COMMON_REPO_BRANCH" \
+          validate_single_word "${COMMON_REPO_BRANCH}" \
           "Custom Kernel repo branch"
 
-          if [ ! -z "$AK3_GIT_BRANCH" ]; 
-            then validate_single_word "$AK3_GIT_BRANCH" \
+          if [ ! -z "${AK3_GIT_BRANCH}" ]; 
+            then 
+              validate_single_word "${AK3_GIT_BRANCH}" \
               "AnyKernel3 fork branch"
           fi
 
-          validate_single_word "$IMAGE_TYPE" \
+          validate_single_word "${IMAGE_TYPE}" \
           "Kernel image type"
 
       - name: Setup build workspace and a local manifest
@@ -136,27 +137,27 @@ jobs:
           USE_LATEST_CLANG: ${{ github.event.inputs.use_latest_clang }}
           CUSTOM_MANIFEST: .repo/local_manifests/custom.xml
         run: |
-          REPO_SOURCE=$(echo $COMMON_REPO | cut -d'/' -f3)
-          REPO_OWNER=$(echo $COMMON_REPO | cut -d'/' -f4)
-          REPO_NAME=$(echo $COMMON_REPO | cut -d'/' -f5)
+          REPO_SOURCE=$(echo ${COMMON_REPO} | cut -d'/' -f3)
+          REPO_OWNER=$(echo ${COMMON_REPO} | cut -d'/' -f4)
+          REPO_NAME=$(echo ${COMMON_REPO} | cut -d'/' -f5)
 
           mkdir kernel-build && cd $_
           mkdir -p .repo/local_manifests
 
           mecho() {
-            echo "$1" >> "$CUSTOM_MANIFEST"
+            echo "$1" >> "${CUSTOM_MANIFEST}"
           }
 
           mecho '<?xml version="1.0" encoding="UTF-8"?>'
           mecho '<manifest>'
-          mecho "  <remote name=\"common-repo\" fetch=\"https://$REPO_SOURCE/$REPO_OWNER\" />"
+          mecho "  <remote name=\"common-repo\" fetch=\"https://${REPO_SOURCE}/${REPO_OWNER}\" />"
           mecho ''
           mecho '  <remove-project name="kernel/common" />'
-          mecho "  <project path=\"common\" name=\"$REPO_NAME\" remote=\"common-repo\" revision=\"$COMMON_REPO_BRANCH\" >"
+          mecho "  <project path=\"common\" name=\"${REPO_NAME}\" remote=\"common-repo\" revision=\"${COMMON_REPO_BRANCH}\" >"
           mecho '    <linkfile src="." dest=".source_date_epoch_dir" />'
           mecho '  </project>'
 
-          if [ "$USE_LATEST_CLANG" = true ]; then
+          if [ "${USE_LATEST_CLANG}" = true ]; then
             mecho '  <remove-project name="platform/prebuilts/clang/host/linux-x86" />'
             mecho '  <project path="prebuilts/clang/host/linux-x86" name="platform/prebuilts/clang/host/linux-x86" revision="main" clone-depth="1" />'
           fi
@@ -166,15 +167,15 @@ jobs:
       - name: Download build utilities
         working-directory: kernel-build
         run: |
-          if [ -z "$AK3_GIT_BRANCH" ]
-            then git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}"
-            else git clone --depth=1 $AK3_GIT_URL "${AK3_DIR}" -b $AK3_GIT_BRANCH
+          if [ -z "${AK3_GIT_BRANCH}" ]
+            then git clone --depth=1 ${AK3_GIT_URL} "${AK3_DIR}"
+            else git clone --depth=1 ${AK3_GIT_URL} "${AK3_DIR}" -b ${AK3_GIT_BRANCH}
           fi
 
           mkdir -p ~/.bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
           chmod a+rx ~/.bin/repo
-          echo "${HOME}/.bin" >> $GITHUB_PATH
+          echo "${HOME}/.bin" >> ${GITHUB_PATH}
 
       - name: Clean up container
         uses: rokibhasansagar/slimhub_actions@main
@@ -187,7 +188,7 @@ jobs:
             --depth=1 \
             --dissociate \
             -u https://android.googlesource.com/kernel/manifest \
-            -b $ACK_BRANCH
+            -b ${ACK_BRANCH}
 
           repo sync \
             --no-tags \
@@ -204,35 +205,36 @@ jobs:
           EXTRA_ARGS: ${{ github.event.inputs.extra_args }}
           FAST_BUILD: ${{ github.event.inputs.fast_build }}
           USE_KLEAF: ${{ github.event.inputs.use_kleaf }}
-          OUT_DIR: ${{ github.workspace }}/kernel-build/out
+          OUT_DIR: ${{ github.workspace }}/kernel-build/out/dist
+          OUT_BAZEL_DIR: ${{ github.workspace }}/kernel-build/bazel-bin/common
         run: |
           mkdir -p "${FINAL_DIR}"
 
           for config in ${BUILD_CONFIGS}; do
-            echo "Building kernel config ${config+1}: $config"
+            echo "Building kernel config ${config+1}: ${config}"
             
-            if [ "$USE_KLEAF" = true ]; 
+            if [ "${USE_KLEAF}" = true ]; 
               then
                 if [ "${FAST_BUILD}" = true ]; 
-                  then tools/bazel build $EXTRA_ARGS --config=fast //common:$config
-                  else tools/bazel build $EXTRA_ARGS //common:$config
+                  then tools/bazel build ${EXTRA_ARGS} --config=fast //common:${config}
+                  else tools/bazel build ${EXTRA_ARGS} //common:${config}
                 fi
 
-                if [ -f "bazel-bin/common/$config/${IMAGE_TYPE}" ]; 
+                if [ -f "${OUT_BAZEL_DIR}/${config}/${IMAGE_TYPE}" ]; 
                   then
-                    mv "bazel-bin/common/$config/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-$config"
+                    mv "${OUT_BAZEL_DIR}/${config}/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-${config}"
                   else
-                    echo "Error: Output image not found for $config"
+                    echo "Error: Output image not found for ${config}"
                     exit 1
                 fi
               else
-                BUILD_CONFIG=common/$config $EXTRA_ARGS build/build.sh
+                BUILD_CONFIG=common/${config} ${EXTRA_ARGS} build/build.sh
 
-                if [ -f "${OUT_DIR}/dist/${IMAGE_TYPE}" ]; 
+                if [ -f "${OUT_DIR}/${IMAGE_TYPE}" ]; 
                   then 
-                    mv "${OUT_DIR}/dist/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-$config"
+                    mv "${OUT_DIR}/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-${config}"
                   else
-                    echo "Error: Output image not found for $config"
+                    echo "Error: Output image not found for ${config}"
                     exit 1
                 fi
             fi
