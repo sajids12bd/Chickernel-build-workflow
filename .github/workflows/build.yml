@@ -205,7 +205,7 @@ jobs:
           EXTRA_ARGS: ${{ github.event.inputs.extra_args }}
           FAST_BUILD: ${{ github.event.inputs.fast_build }}
           USE_KLEAF: ${{ github.event.inputs.use_kleaf }}
-          OUT_DIR: ${{ github.workspace }}/kernel-build/out/dist
+          OUT_DIR: ${{ github.workspace }}/kernel-build/out
           OUT_BAZEL_DIR: ${{ github.workspace }}/kernel-build/bazel-bin/common
         run: |
           mkdir -p "${FINAL_DIR}"
