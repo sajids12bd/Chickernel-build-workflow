@@ -231,9 +231,9 @@ jobs:
               else
                 BUILD_CONFIG=common/${config} ${EXTRA_ARGS} build/build.sh
 
-                if [ -f "${OUT_DIR}/${IMAGE_TYPE}" ]; 
+                if [ -f "${OUT_DIR}/dist/${IMAGE_TYPE}" ]; 
                   then 
-                    mv "${OUT_DIR}/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-${config}"
+                    mv "${OUT_DIR}/dist/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-${config}"
                   else
                     echo "Error: Output image not found for ${config}"
                     exit 1
