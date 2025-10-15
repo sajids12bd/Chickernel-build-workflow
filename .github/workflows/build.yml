@@ -174,7 +174,7 @@ jobs:
             --fetch-submodules \
             -j$(nproc --all)
 
-      # 🧩 Auto-update KernelSU to latest stable
+      # --- KernelSU auto-update ---
       - name: Update KernelSU to latest stable
         working-directory: kernel-build/common
         run: |
@@ -188,7 +188,7 @@ jobs:
           fi
           echo "✅ KernelSU updated to latest stable release."
 
-      # 🧩 Apply latest stable SUSFS patch (resilient)
+      # --- SUSFS auto-patch ---
       - name: Apply latest stable SUSFS patch (android13-5.15)
         working-directory: kernel-build/common
         run: |
@@ -235,8 +235,12 @@ jobs:
           mkdir -p "${FINAL_DIR}"
 
           for config in ${BUILD_CONFIGS}; do
-            echo "Building kernel config ${config+1}: ${config}"
-            
+            echo "🔧 Preparing KernelSU for config: ${config}"
+            if [ -d "drivers/kernelsu" ]; then
+              cp -r drivers/kernelsu/* kernel-build/common/drivers/
+            fi
+
+            echo "🏗 Building kernel config ${config+1}: ${config}"
             if [ "${USE_KLEAF}" = true ]; then
               if [ "${FAST_BUILD}" = true ]; then
                 tools/bazel build ${EXTRA_ARGS} --config=fast //common:${config}
@@ -248,20 +252,8 @@ jobs:
                 sudo chmod 777 -R ${OUT_BAZEL_DIR}/${config}
                 mv "${OUT_BAZEL_DIR}/${config}/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-${config}"
               else
-                echo "Error: Output image not found for ${config}"
+                echo "❌ Error: Output image not found for ${config}"
                 exit 1
               fi
             else
-              BUILD_CONFIG=common/${config} ${EXTRA_ARGS} build/build.sh
-
-              if [ -f "${OUT_DIR}/dist/${IMAGE_TYPE}" ]; then 
-                mv "${OUT_DIR}/dist/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-${config}"
-              else
-                echo "Error: Output image not found for ${config}"
-                exit 1
-              fi
-            fi
-          done
-
-      - name: Package Kernels with AnyKernel3
-        working-directory: kernel-build
+              BUILD_CONFIG=common/${
