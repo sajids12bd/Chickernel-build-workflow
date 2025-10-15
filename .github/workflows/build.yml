@@ -174,7 +174,7 @@ jobs:
             --fetch-submodules \
             -j$(nproc --all)
 
-      # 🧩 NEW STEP: Auto-update KernelSU to latest stable version
+      # 🧩 Auto-update KernelSU to latest stable
       - name: Update KernelSU to latest stable
         working-directory: kernel-build/common
         run: |
@@ -188,37 +188,39 @@ jobs:
           fi
           echo "✅ KernelSU updated to latest stable release."
 
-      # 🧩 NEW STEP: Apply latest stable SUSFS patch for android13-5.15
+      # 🧩 Apply latest stable SUSFS patch (resilient)
       - name: Apply latest stable SUSFS patch (android13-5.15)
         working-directory: kernel-build/common
         run: |
           echo "🔄 Applying latest stable SUSFS patch for android13-5.15..."
           SUSFS_LATEST=$(curl -s https://api.github.com/repos/SUSFS/SUSFS/releases/latest | grep -Po '"tag_name": "\K.*?(?=")')
           if [ -z "$SUSFS_LATEST" ]; then
-            echo "❌ Failed to fetch latest SUSFS release tag."
-            exit 1
+            echo "⚠️ Failed to fetch latest SUSFS release tag. Skipping patch."
+            exit 0
           fi
           echo "📦 Latest SUSFS release: $SUSFS_LATEST"
 
+          PATCH_FOUND=false
           for DIR in "patches/android13-5.15" "patches/5.15" "patches/common"; do
             SUSFS_PATCH_URL="https://raw.githubusercontent.com/SUSFS/SUSFS/${SUSFS_LATEST}/${DIR}/susfs-${SUSFS_LATEST}.patch"
             echo "🔍 Checking ${SUSFS_PATCH_URL}"
             if curl --silent --fail -o susfs.patch "${SUSFS_PATCH_URL}"; then
               echo "✅ Found SUSFS patch at ${DIR}"
+              PATCH_FOUND=true
               break
             fi
           done
 
-          if [ ! -f susfs.patch ]; then
-            echo "❌ Could not find a valid SUSFS patch for ${SUSFS_LATEST} (android13-5.15)."
-            exit 1
+          if [ "$PATCH_FOUND" = false ]; then
+            echo "⚠️ SUSFS patch not found. Skipping patch application."
+            exit 0
           fi
 
           if git apply --check susfs.patch; then
             git apply susfs.patch
             echo "✅ SUSFS ${SUSFS_LATEST} patch applied successfully."
           else
-            echo "⚠️ SUSFS patch already applied or partially merged, skipping."
+            echo "⚠️ SUSFS patch already applied or partially merged. Skipping."
           fi
 
       - name: Build, and process the kernel(s)
@@ -263,24 +265,3 @@ jobs:
 
       - name: Package Kernels with AnyKernel3
         working-directory: kernel-build
-        run: |
-          for config in ${BUILD_CONFIGS}; do
-            if [ -f "${FINAL_DIR}/${IMAGE_TYPE}-${config}" ]; then
-              cp -r "${AK3_DIR}" "${AK3_DIR}-${config}"
-              cd "${AK3_DIR}-${config}"
-              
-              cp "${FINAL_DIR}/${IMAGE_TYPE}-${config}" "${AK3_DIR}-${config}/${IMAGE_TYPE}"
-              zip -r9 "${FINAL_DIR}/${config}.zip" * -x .git README.md *placeholder
-              
-              cd ..
-            fi
-          done
-
-      - name: Upload Kernel Packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: kernel-packages
-          path: |
-            kernel-build/final_images/*.zip
-          if-no-files-found: error
-          retention-days: 30
