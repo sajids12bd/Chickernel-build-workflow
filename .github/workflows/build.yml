@@ -1,18 +1,7 @@
 #  A github workflow to build custom android common kernels with specified parameters
 #  Copyright (C) 2025 chickendrop89
 #
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#  Licensed under GPL v3 or later
 
 name: Build Android Common Kernel
 
@@ -101,9 +90,22 @@ jobs:
               exit 1
             fi
           }
-
           validate_url ${COMMON_REPO}
           validate_url ${AK3_GIT_URL}
+
+          validate_single_word() {
+            if [[ "$1" =~ [[:space:]] ]]; then
+              echo "::error::Invalid $2: $1"
+              exit 1
+            fi
+          }
+
+          validate_single_word "${ACK_BRANCH}" "Android-common-kernel branch"
+          validate_single_word "${COMMON_REPO_BRANCH}" "Custom Kernel repo branch"
+          if [ ! -z "${AK3_GIT_BRANCH}" ]; then
+            validate_single_word "${AK3_GIT_BRANCH}" "AnyKernel3 fork branch"
+          fi
+          validate_single_word "${IMAGE_TYPE}" "Kernel image type"
 
       - name: Setup build workspace and a local manifest
         env:
@@ -117,16 +119,25 @@ jobs:
           mkdir kernel-build && cd $_
           mkdir -p .repo/local_manifests
 
-          echo '<?xml version="1.0" encoding="UTF-8"?>' > ${CUSTOM_MANIFEST}
-          echo '<manifest>' >> ${CUSTOM_MANIFEST}
-          echo "  <remote name=\"common-repo\" fetch=\"https://${REPO_SOURCE}/${REPO_OWNER}\" />" >> ${CUSTOM_MANIFEST}
-          echo "  <remove-project name=\"kernel/common\" />" >> ${CUSTOM_MANIFEST}
-          echo "  <project path=\"common\" name=\"${REPO_NAME}\" remote=\"common-repo\" revision=\"${COMMON_REPO_BRANCH}\" />" >> ${CUSTOM_MANIFEST}
+          mecho() {
+            echo "$1" >> "${CUSTOM_MANIFEST}"
+          }
+
+          mecho '<?xml version="1.0" encoding="UTF-8"?>'
+          mecho '<manifest>'
+          mecho "  <remote name=\"common-repo\" fetch=\"https://${REPO_SOURCE}/${REPO_OWNER}\" />"
+          mecho ''
+          mecho '  <remove-project name="kernel/common" />'
+          mecho "  <project path=\"common\" name=\"${REPO_NAME}\" remote=\"common-repo\" revision=\"${COMMON_REPO_BRANCH}\" >"
+          mecho '    <linkfile src="." dest=".source_date_epoch_dir" />'
+          mecho '  </project>'
+
           if [ "${USE_LATEST_CLANG}" = true ]; then
-            echo '  <remove-project name="platform/prebuilts/clang/host/linux-x86" />' >> ${CUSTOM_MANIFEST}
-            echo '  <project path="prebuilts/clang/host/linux-x86" name="platform/prebuilts/clang/host/linux-x86" revision="main" clone-depth="1" />' >> ${CUSTOM_MANIFEST}
+            mecho '  <remove-project name="platform/prebuilts/clang/host/linux-x86" />'
+            mecho '  <project path="prebuilts/clang/host/linux-x86" name="platform/prebuilts/clang/host/linux-x86" revision="main" clone-depth="1" />'
           fi
-          echo '</manifest>' >> ${CUSTOM_MANIFEST}
+
+          mecho '</manifest>'
 
       - name: Download build utilities
         working-directory: kernel-build
@@ -147,42 +158,68 @@ jobs:
       - name: Initialize the manifest, and sync
         working-directory: kernel-build
         run: |
-          repo init --no-tags --depth=1 -u https://android.googlesource.com/kernel/manifest -b ${ACK_BRANCH}
-          repo sync --no-tags --clone-bundle --current-branch --optimized-fetch --force-sync -j$(nproc --all)
+          repo init \
+            --no-tags \
+            --depth=1 \
+            --dissociate \
+            -u https://android.googlesource.com/kernel/manifest \
+            -b ${ACK_BRANCH}
 
-      # 🧩 Auto-upgrade KernelSU (latest stable release)
-      - name: Update KernelSU to latest stable release
+          repo sync \
+            --no-tags \
+            --clone-bundle \
+            --current-branch \
+            --optimized-fetch \
+            --force-sync \
+            --fetch-submodules \
+            -j$(nproc --all)
+
+      # 🧩 NEW STEP: Auto-update KernelSU to latest stable version
+      - name: Update KernelSU to latest stable
         working-directory: kernel-build/common
         run: |
-          echo "🔄 Fetching latest stable KernelSU release..."
-          LATEST_RELEASE=$(curl -s https://api.github.com/repos/tiann/KernelSU/releases/latest | grep -Po '"tag_name": "\K.*?(?=")')
-          if [ -z "$LATEST_RELEASE" ]; then
-            echo "❌ Failed to fetch latest release tag. Exiting."
-            exit 1
+          echo "🔄 Updating KernelSU to latest stable..."
+          if [ -d "drivers/kernelsu" ]; then
+            rm -rf drivers/kernelsu
           fi
-          echo "📦 Latest KernelSU release: $LATEST_RELEASE"
-          rm -rf drivers/kernelsu
-          git clone --depth=1 --branch "$LATEST_RELEASE" https://github.com/tiann/KernelSU.git drivers/kernelsu
+          git clone --depth=1 https://github.com/tiann/KernelSU.git drivers/kernelsu
           if [ -f drivers/kernelsu/kernel.patch ]; then
             git apply drivers/kernelsu/kernel.patch || echo "⚠️ KernelSU patch may already be applied."
           fi
-          echo "✅ KernelSU upgraded to $LATEST_RELEASE"
+          echo "✅ KernelSU updated to latest stable release."
 
-      # 🧩 Auto-apply latest stable SUSFS patch for android13-5.15
+      # 🧩 NEW STEP: Apply latest stable SUSFS patch for android13-5.15
       - name: Apply latest stable SUSFS patch (android13-5.15)
         working-directory: kernel-build/common
         run: |
           echo "🔄 Applying latest stable SUSFS patch for android13-5.15..."
           SUSFS_LATEST=$(curl -s https://api.github.com/repos/SUSFS/SUSFS/releases/latest | grep -Po '"tag_name": "\K.*?(?=")')
           if [ -z "$SUSFS_LATEST" ]; then
-            echo "❌ Failed to fetch latest SUSFS release tag. Exiting."
+            echo "❌ Failed to fetch latest SUSFS release tag."
             exit 1
           fi
           echo "📦 Latest SUSFS release: $SUSFS_LATEST"
-          SUSFS_PATCH_URL="https://raw.githubusercontent.com/SUSFS/SUSFS/${SUSFS_LATEST}/patches/android13-5.15/susfs-${SUSFS_LATEST}.patch"
-          curl -L -o susfs.patch "${SUSFS_PATCH_URL}"
-          git apply susfs.patch || echo "⚠️ SUSFS patch may already be applied or partially merged."
-          echo "✅ SUSFS patched with version ${SUSFS_LATEST}"
+
+          for DIR in "patches/android13-5.15" "patches/5.15" "patches/common"; do
+            SUSFS_PATCH_URL="https://raw.githubusercontent.com/SUSFS/SUSFS/${SUSFS_LATEST}/${DIR}/susfs-${SUSFS_LATEST}.patch"
+            echo "🔍 Checking ${SUSFS_PATCH_URL}"
+            if curl --silent --fail -o susfs.patch "${SUSFS_PATCH_URL}"; then
+              echo "✅ Found SUSFS patch at ${DIR}"
+              break
+            fi
+          done
+
+          if [ ! -f susfs.patch ]; then
+            echo "❌ Could not find a valid SUSFS patch for ${SUSFS_LATEST} (android13-5.15)."
+            exit 1
+          fi
+
+          if git apply --check susfs.patch; then
+            git apply susfs.patch
+            echo "✅ SUSFS ${SUSFS_LATEST} patch applied successfully."
+          else
+            echo "⚠️ SUSFS patch already applied or partially merged, skipping."
+          fi
 
       - name: Build, and process the kernel(s)
         working-directory: kernel-build
@@ -194,26 +231,56 @@ jobs:
           OUT_BAZEL_DIR: ${{ github.workspace }}/kernel-build/bazel-bin/common
         run: |
           mkdir -p "${FINAL_DIR}"
+
           for config in ${BUILD_CONFIGS}; do
-            echo "Building config: ${config}"
-            BUILD_CONFIG=common/${config} ${EXTRA_ARGS} build/build.sh
-            mv "${OUT_DIR}/dist/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-${config}"
+            echo "Building kernel config ${config+1}: ${config}"
+            
+            if [ "${USE_KLEAF}" = true ]; then
+              if [ "${FAST_BUILD}" = true ]; then
+                tools/bazel build ${EXTRA_ARGS} --config=fast //common:${config}
+              else
+                tools/bazel build ${EXTRA_ARGS} //common:${config}
+              fi
+
+              if [ -f "${OUT_BAZEL_DIR}/${config}/${IMAGE_TYPE}" ]; then
+                sudo chmod 777 -R ${OUT_BAZEL_DIR}/${config}
+                mv "${OUT_BAZEL_DIR}/${config}/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-${config}"
+              else
+                echo "Error: Output image not found for ${config}"
+                exit 1
+              fi
+            else
+              BUILD_CONFIG=common/${config} ${EXTRA_ARGS} build/build.sh
+
+              if [ -f "${OUT_DIR}/dist/${IMAGE_TYPE}" ]; then 
+                mv "${OUT_DIR}/dist/${IMAGE_TYPE}" "${FINAL_DIR}/${IMAGE_TYPE}-${config}"
+              else
+                echo "Error: Output image not found for ${config}"
+                exit 1
+              fi
+            fi
           done
 
       - name: Package Kernels with AnyKernel3
         working-directory: kernel-build
         run: |
           for config in ${BUILD_CONFIGS}; do
-            cp -r "${AK3_DIR}" "${AK3_DIR}-${config}"
-            cd "${AK3_DIR}-${config}"
-            cp "${FINAL_DIR}/${IMAGE_TYPE}-${config}" "${AK3_DIR}-${config}/${IMAGE_TYPE}"
-            zip -r9 "${FINAL_DIR}/${config}.zip" * -x .git README.md *placeholder
-            cd ..
+            if [ -f "${FINAL_DIR}/${IMAGE_TYPE}-${config}" ]; then
+              cp -r "${AK3_DIR}" "${AK3_DIR}-${config}"
+              cd "${AK3_DIR}-${config}"
+              
+              cp "${FINAL_DIR}/${IMAGE_TYPE}-${config}" "${AK3_DIR}-${config}/${IMAGE_TYPE}"
+              zip -r9 "${FINAL_DIR}/${config}.zip" * -x .git README.md *placeholder
+              
+              cd ..
+            fi
           done
 
       - name: Upload Kernel Packages
         uses: actions/upload-artifact@v4
         with:
           name: kernel-packages
-          path: kernel-build/final_images/*.zip
+          path: |
+            kernel-build/final_images/*.zip
+          if-no-files-found: error
           retention-days: 30
