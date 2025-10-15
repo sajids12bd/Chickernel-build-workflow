@@ -1,7 +1,7 @@
-#  A github workflow to build custom android common kernels with specified parameters
-#  Copyright (C) 2025 chickendrop89
+# A github workflow to build custom android common kernels with specified parameters
+# Copyright (C) 2025 chickendrop89
 #
-#  Licensed under GPL v3 or later
+# Licensed under GPL v3 or later
 
 name: Build Android Common Kernel
 
@@ -41,6 +41,7 @@ on:
         description: 'Kernel image to package (Image.gz, Image.lz4, etc)'
         required: true
         default: 'Image'
+        type: string
       fast_build:
         description: 'Instruct tools to perform a Fast Build'
         required: true
@@ -66,12 +67,10 @@ jobs:
     env:
       BUILD_CONFIGS: ${{ github.event.inputs.build_configs }}
       IMAGE_TYPE: ${{ github.event.inputs.kernel_image_type }}
-
       ACK_BRANCH: ${{ github.event.inputs.ack_branch }}
       COMMON_REPO: ${{ github.event.inputs.custom_kernel_repo }}
       COMMON_REPO_BRANCH: ${{ github.event.inputs.custom_kernel_repo_branch }}
       AK3_GIT_URL_PLUS_BRANCH: ${{ github.event.inputs.anykernel_url_plus_branch }}
-
       AK3_DIR: ${{ github.workspace }}/kernel-build/anykernel3
       FINAL_DIR: ${{ github.workspace }}/kernel-build/final_images
 
@@ -174,7 +173,15 @@ jobs:
             --fetch-submodules \
             -j$(nproc --all)
 
-      # --- KernelSU auto-update ---
+      - name: Verify Git repository
+        working-directory: kernel-build/common
+        run: |
+          if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            echo "❌ Error: Not a valid Git repository in $(pwd)"
+            exit 1
+          fi
+          echo "✅ Git repository verified."
+
       - name: Update KernelSU to latest stable
         working-directory: kernel-build/common
         run: |
@@ -184,22 +191,52 @@ jobs:
           fi
           git clone --depth=1 https://github.com/tiann/KernelSU.git drivers/kernelsu
           if [ -f drivers/kernelsu/kernel.patch ]; then
-            git apply drivers/kernelsu/kernel.patch || echo "⚠️ KernelSU patch may already be applied."
+            git apply drivers/kernelsu/kernel.patch || {
+              echo "⚠️ KernelSU patch may already be applied or conflicts. Continuing..."
+            }
+            git add .
+            git commit -m "Apply latest KernelSU patch" || echo "✅ No changes to commit for KernelSU."
           fi
           echo "✅ KernelSU updated to latest stable release."
 
-      # --- SUSFS auto-patch ---
       - name: Apply latest stable SUSFS patch (android13-5.15)
         working-directory: kernel-build/common
         run: |
           echo "🔄 Applying latest stable SUSFS patch for android13-5.15..."
-          SUSFS_LATEST=$(curl -s https://api.github.com/repos/SUSFS/SUSFS/releases/latest | grep -Po '"tag_name": "\K.*?(?=")')
+
+          # Skip patching if build config includes 'susfs'
+          if [[ "${BUILD_CONFIGS}" == *"susfs"* ]]; then
+            echo "⚠️ SUSFS detected in build config (${BUILD_CONFIGS}). Skipping patch application."
+            exit 0
+          fi
+
+          # Check for existing SUSFS patches
+          echo "🔍 Checking for existing SUSFS patches..."
+          SUSFS_COMMITS=$(git log --oneline --grep="susfs" --grep="SUSFS" || true)
+          if [ -n "$SUSFS_COMMITS" ]; then
+            echo "⚠️ Found existing SUSFS-related commits:"
+            echo "$SUSFS_COMMITS"
+            echo "🔄 Attempting to revert SUSFS-related changes..."
+            LATEST_SUSFS_COMMIT=$(git log --oneline --grep="susfs" --grep="SUSFS" -n 1 | cut -d' ' -f1)
+            if [ -n "$LATEST_SUSFS_COMMIT" ]; then
+              git revert --no-edit "$LATEST_SUSFS_COMMIT" || {
+                echo "⚠️ Failed to revert SUSFS commit. Assuming kernel is ready for new patch."
+              }
+              echo "✅ Reverted previous SUSFS commit: $LATEST_SUSFS_COMMIT"
+            fi
+          else
+            echo "✅ No existing SUSFS patches found."
+          fi
+
+          # Fetch the latest SUSFS release
+          SUSFS_LATEST=$(curl -s https://api.github.com/repos/SUSFS/SUSFS/releases/latest | grep -Po '"tag_name": "\K.*?(?=")' || true)
           if [ -z "$SUSFS_LATEST" ]; then
             echo "⚠️ Failed to fetch latest SUSFS release tag. Skipping patch."
             exit 0
           fi
           echo "📦 Latest SUSFS release: $SUSFS_LATEST"
 
+          # Search for the SUSFS patch
           PATCH_FOUND=false
           for DIR in "patches/android13-5.15" "patches/5.15" "patches/common"; do
             SUSFS_PATCH_URL="https://raw.githubusercontent.com/SUSFS/SUSFS/${SUSFS_LATEST}/${DIR}/susfs-${SUSFS_LATEST}.patch"
@@ -216,9 +253,37 @@ jobs:
             exit 0
           fi
 
-          git apply --check susfs.patch || echo "⚠️ SUSFS patch already applied or partially merged. Skipping check."
-          git apply susfs.patch || echo "⚠️ SUSFS patch may already be applied."
-          echo "✅ SUSFS ${SUSFS_LATEST} patch applied successfully."
+          # Apply the new SUSFS patch
+          echo "🔧 Checking if SUSFS patch can be applied..."
+          if git apply --check susfs.patch >/dev/null 2>&1; then
+            echo "🔧 Applying SUSFS patch..."
+            if git apply susfs.patch; then
+              echo "✅ SUSFS ${SUSFS_LATEST} patch applied successfully."
+              git add .
+              git commit -m "Apply SUSFS ${SUSFS_LATEST} patch" || echo "✅ No changes to commit for SUSFS."
+            else
+              echo "❌ Failed to apply SUSFS patch cleanly."
+              exit 1
+            fi
+          else
+            echo "⚠️ SUSFS patch cannot be applied cleanly (possible conflicts or already applied)."
+            git apply --reject susfs.patch || {
+              echo "❌ Patch application failed. See *.rej files for conflicts."
+              ls *.rej || true
+              exit 1
+            }
+            echo "⚠️ Patch applied with conflicts. Review *.rej files in $(pwd)"
+            git add .
+            git commit -m "Apply SUSFS ${SUSFS_LATEST} patch with conflicts" || echo "✅ No changes to commit for SUSFS."
+          fi
+
+      - name: Upload SUSFS conflict files (if any)
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: susfs-conflicts
+          path: kernel-build/common/*.rej
+          if-no-files-found: ignore
 
       - name: Build, and process the kernel(s)
         working-directory: kernel-build
@@ -231,4 +296,79 @@ jobs:
         run: |
           mkdir -p "${FINAL_DIR}"
 
-          for config in ${BUILD_CONFIGS
+          for config in ${BUILD_CONFIGS}; do
+            echo "🔨 Building kernel with config: ${config}"
+
+            # Validate build config file
+            if [ ! -f "common/${config}" ]; then
+              echo "❌ Error: Build config common/${config} not found!"
+              exit 1
+            fi
+
+            # Set up output directory for this config
+            CONFIG_OUT_DIR="${OUT_DIR}/${config}"
+            mkdir -p "${CONFIG_OUT_DIR}"
+
+            if [ "${USE_KLEAF}" = true ]; then
+              # Build using Kleaf (Bazel-based build system)
+              echo "🚀 Using Kleaf build system..."
+              bazel build //common:kernel_aarch64_dist \
+                --config="${config}" \
+                --dist_dir="${CONFIG_OUT_DIR}" \
+                ${EXTRA_ARGS} || {
+                echo "❌ Failed to build kernel with Kleaf for config ${config}"
+                exit 1
+              }
+              cp -v "${OUT_BAZEL_DIR}/kernel_aarch64_dist/${IMAGE_TYPE}" "${CONFIG_OUT_DIR}/" || {
+                echo "❌ Failed to copy kernel image ${IMAGE_TYPE}"
+                exit 1
+              }
+            else
+              # Build using traditional build script
+              echo "🚀 Using traditional build script..."
+              if [ "${FAST_BUILD}" = true ]; then
+                echo "⚡ Performing fast build..."
+                ./build/build.sh \
+                  -j$(nproc --all) \
+                  BUILD_CONFIG="common/${config}" \
+                  OUT_DIR="${CONFIG_OUT_DIR}" \
+                  ${EXTRA_ARGS} || {
+                  echo "❌ Failed to build kernel with build.sh for config ${config}"
+                  exit 1
+                }
+              else
+                ./build/build.sh \
+                  -j$(nproc --all) \
+                  BUILD_CONFIG="common/${config}" \
+                  OUT_DIR="${CONFIG_OUT_DIR}" \
+                  ${EXTRA_ARGS} || {
+                  echo "❌ Failed to build kernel with build.sh for config ${config}"
+                  exit 1
+                }
+              fi
+              cp -v "${CONFIG_OUT_DIR}/kernel/${IMAGE_TYPE}" "${CONFIG_OUT_DIR}/" || {
+                echo "❌ Failed to copy kernel image ${IMAGE_TYPE}"
+                exit 1
+              }
+            fi
+
+            # Package the kernel with AnyKernel3
+            echo "📦 Packaging kernel with AnyKernel3..."
+            cp "${CONFIG_OUT_DIR}/${IMAGE_TYPE}" "${AK3_DIR}/Image"
+            cd "${AK3_DIR}"
+            zip -r9 "${FINAL_DIR}/${config}-${IMAGE_TYPE}-kernel.zip" . -x ".git/*" -x "*.md" || {
+              echo "❌ Failed to create kernel ZIP for config ${config}"
+              exit 1
+            }
+            cd "${GITHUB_WORKSPACE}/kernel-build"
+            echo "✅ Kernel package created: ${FINAL_DIR}/${config}-${IMAGE_TYPE}-kernel.zip"
+          done
+
+          echo "🎉 All kernels built and packaged successfully!"
+
+      - name: Upload kernel artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: kernel-zips
+          path: ${{ github.workspace }}/kernel-build/final_images/*.zip
+          if-no-files-found: error
