@@ -279,7 +279,7 @@ jobs:
 
       - name: Upload SUSFS conflict files (if any)
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: susfs-conflicts
           path: kernel-build/common/*.rej
@@ -367,7 +367,7 @@ jobs:
           echo "🎉 All kernels built and packaged successfully!"
 
       - name: Upload kernel artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: kernel-zips
           path: ${{ github.workspace }}/kernel-build/final_images/*.zip
